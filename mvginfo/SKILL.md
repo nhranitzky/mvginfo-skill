@@ -37,7 +37,7 @@ The CLI calls the MVG API directly (no API key required) and returns compact TOO
 All commands follow the pattern:
 
 ```bash
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm <command> [options]
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli <command> --output llm [options]
 ```
 
 `uv` must be in `PATH`. On first `disruptions` call, Chromium is installed automatically.
@@ -48,13 +48,13 @@ Search for stations by name or GPS coordinates.
 
 ```bash
 # By name
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm find-stations --name "Marienplatz"
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli find-stations --output llm --name "Marienplatz"
 
 # By coordinates
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm find-stations --lat 48.137 --lng 11.575
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli find-stations --output llm --lat 48.137 --lng 11.575
 
 # All nearby stations (not just the closest)
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm find-stations --lat 48.137 --lng 11.575 --all
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli find-stations --output llm --lat 48.137 --lng 11.575 --all
 ```
 
 **Output:**
@@ -74,13 +74,13 @@ Real-time departure board for a station.
 
 ```bash
 # Basic
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm departures --station "Marienplatz"
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli departures --output llm --station "Marienplatz"
 
 # Limit results and add walking offset
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm departures --station "Marienplatz" --limit 10 --offset 3
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli departures --output llm --station "Marienplatz" --limit 10 --offset 3
 
 # Filter by transport type and/or line
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm departures --station "Marienplatz" --transport UBAHN --lines U3,U6
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli departures --output llm --station "Marienplatz" --transport UBAHN --lines U3,U6
 ```
 
 **Output:**
@@ -105,10 +105,10 @@ departures:
 Direct connections from one station to another.
 
 ```bash
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm route --from "Marienplatz" --to "Hauptbahnhof"
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli route --output llm --from "Marienplatz" --to "Hauptbahnhof"
 
 # With filters
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm route --from "Marienplatz" --to "Hauptbahnhof" --transport UBAHN --limit 4
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli route --output llm --from "Marienplatz" --to "Hauptbahnhof" --transport UBAHN --limit 4
 ```
 
 **Output:**
@@ -135,13 +135,13 @@ Live service disruptions and alerts. Loads data via Playwright (headless Chromiu
 
 ```bash
 # All disruptions
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm disruptions
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli disruptions --output llm
 
 # Filtered by line
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm disruptions --lines U3,U6
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli disruptions --output llm --lines U3,U6
 
 # Filtered by transport type
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli --output llm disruptions --transport UBAHN
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli disruptions --output llm --transport UBAHN
 ```
 
 **Output:**

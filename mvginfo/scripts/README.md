@@ -2,12 +2,6 @@
 
 Command-line tool for Munich public transport (MVG).
 
-## Global option
-
-| Option | Values | Description |
-|--------|--------|-------------|
-| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
-
 ## Commands
 
 ---
@@ -25,6 +19,7 @@ Search for stations by name or GPS coordinates.
 | `--lng` | FLOAT | Longitude — requires `--lat` |
 | `--all` | Flag | Return all nearby stations (default: closest only) |
 | `--no-lines` | Flag | Skip line lookup (faster) |
+| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -66,6 +61,7 @@ Real-time departure board for a station.
 | `--offset` | INT | Walking offset in minutes (default: 0) |
 | `--transport` | TEXT | Transport type filter, comma-separated |
 | `--lines` | TEXT | Line filter, comma-separated (e.g. `U3,U6`) |
+| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -115,6 +111,7 @@ Direct connections from A to B (no transfers).
 | `--limit` | INT | Max connections (default: 6) |
 | `--transport` | TEXT | Transport type filter |
 | `--lines` | TEXT | Line filter |
+| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -163,6 +160,7 @@ Live service disruptions and alerts (loaded via Playwright).
 | `--transport` | TEXT | Transport type filter |
 | `--lines` | TEXT | Line filter |
 | `--debug` | Flag | Print all intercepted API URLs |
+| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
