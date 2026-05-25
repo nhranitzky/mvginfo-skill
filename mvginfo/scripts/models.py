@@ -37,6 +37,24 @@ class Connection(BaseModel):
     platform: str | None = None
 
 
+class JourneyLeg(BaseModel):
+    line: str
+    type: str
+    origin: str
+    departure: str
+    departure_rt: str | None = None
+    transfer_at: str
+    arrival: str
+    direction: str
+    platform: str | None = None
+
+
+class Journey(BaseModel):
+    duration: int
+    transfers: int
+    legs: list[JourneyLeg]
+
+
 class Disruption(BaseModel):
     type: str
     title: str

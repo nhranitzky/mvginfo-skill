@@ -24,10 +24,9 @@ The CLI calls the MVG API directly (no API key required) and returns compact TOO
 - Asks for departure times, next trains, or buses at a Munich station
 - Names a Munich station or MVG line (U3, S8, Tram 19, …)
 - Asks about current disruptions or service alerts on the Munich network
-- Asks for a direct connection from station A to station B in Munich
+- Asks for a connection from station A to station B in Munich
 
 **Do not use for:**
-- Connections requiring transfers → direct the user to <https://www.mvg.de/verbindungen.html>
 - Cities outside the MVG network
 - Multi-day advance timetable planning
 - Real-time vehicle positions
@@ -102,32 +101,42 @@ departures:
 
 ## route
 
-Direct connections from one station to another.
+Journey planner from one station to another, including connections with transfers.
 
 ```bash
 ${HERMES_SKILL_DIR}/scripts/bin/mvgcli route --output llm --from "Marienplatz" --to "Hauptbahnhof"
 
 # With filters
-${HERMES_SKILL_DIR}/scripts/bin/mvgcli route --output llm --from "Marienplatz" --to "Hauptbahnhof" --transport UBAHN --limit 4
+${HERMES_SKILL_DIR}/scripts/bin/mvgcli route --output llm --from "Marienplatz" --to "Hauptbahnhof" --transport UBAHN --limit 4 --lines U3,U6
 ```
 
 **Output:**
 ```toon
-origin: Marienplatz
-destination: Hauptbahnhof
-time: 09:45
-connections:
-  - line: U3
-    type: U-Bahn
-    destination: Hauptbahnhof
-    board_at: Marienplatz
-    in_minutes: 2
-    departs_at: "09:47"
-    delay_seconds: 0
-    realtime: true
+origin: Hauptbahnhof
+destination: Sendlinger Tor
+time: 14:05
+journeys:
+  - duration: 22
+    transfers: 1
+    legs:
+      - line: U5
+        type: UBAHN
+        origin: Hauptbahnhof
+        departure: "14:09"
+        transfer_at: Innsbrucker Ring
+        arrival: "14:19"
+        direction: Neuperlach Süd
+        platform: "2"
+      - line: U2
+        type: UBAHN
+        origin: Innsbrucker Ring
+        departure: "14:24"
+        transfer_at: Sendlinger Tor
+        arrival: "14:31"
+        direction: Messestadt Ost
 ```
 
-**Important:** Only direct services are supported. If no connection is found, the user needs a transfer — refer them to <https://www.mvg.de/verbindungen.html>.
+**Important:** Walking-only routes are filtered out automatically. If no results appear, use the station's global ID (e.g. `--from de:09162:2`).
 
 ## disruptions
 
@@ -178,12 +187,12 @@ An empty `disruptions:` list means no active alerts.
 
 1. **Station not found by name** — use the global ID instead: `--station de:09162:2`. Run `find-stations` first to get the ID.
 2. **`disruptions` hangs or errors** — Chromium must be installed: run `python -m playwright install chromium` inside the scripts directory.
-3. **`route` returns no results** — only direct services are supported. For connections with transfers, direct the user to <https://www.mvg.de/verbindungen.html>.
+3. **`route` returns no results** — use the station's global ID (e.g. `--from de:09162:2`). Walking-only routes are filtered out automatically.
 4. **`uv` not found** — install via `brew install uv` (macOS) or `pip install uv` (Linux), then reopen the terminal.
 
 ## Verification Checklist
 
 - [ ] `find-stations --name "Marienplatz"` returns at least one station with an `id` field
 - [ ] `departures --station "Marienplatz"` returns entries with `in_minutes` values
-- [ ] `route --from "Marienplatz" --to "Hauptbahnhof"` returns at least one connection with `departs_at`
+- [ ] `route --from "Marienplatz" --to "Hauptbahnhof"` returns at least one journey with `legs`
 - [ ] `disruptions` completes without error (empty list is valid)

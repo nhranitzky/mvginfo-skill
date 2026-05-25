@@ -2,6 +2,12 @@
 
 Command-line tool for Munich public transport (MVG).
 
+## Global option
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
+
 ## Commands
 
 ---
@@ -19,7 +25,6 @@ Search for stations by name or GPS coordinates.
 | `--lng` | FLOAT | Longitude — requires `--lat` |
 | `--all` | Flag | Return all nearby stations (default: closest only) |
 | `--no-lines` | Flag | Skip line lookup (faster) |
-| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -61,7 +66,6 @@ Real-time departure board for a station.
 | `--offset` | INT | Walking offset in minutes (default: 0) |
 | `--transport` | TEXT | Transport type filter, comma-separated |
 | `--lines` | TEXT | Line filter, comma-separated (e.g. `U3,U6`) |
-| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -100,7 +104,7 @@ departures:
 
 ### `route`
 
-Direct connections from A to B (no transfers).
+Journey planner from A to B including transfers (via MVG route API).
 
 **Options:**
 
@@ -108,23 +112,40 @@ Direct connections from A to B (no transfers).
 |--------|------|-------------|
 | `--from` | TEXT | Origin station **(required)** |
 | `--to` | TEXT | Destination station **(required)** |
-| `--limit` | INT | Max connections (default: 6) |
+| `--limit` | INT | Max journeys (default: 6) |
 | `--transport` | TEXT | Transport type filter |
-| `--lines` | TEXT | Line filter |
-| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
+| `--lines` | TEXT | Line filter (journeys containing these lines) |
 
 **`--output json`:**
 ```json
 [
   {
-    "origin_name": "Marienplatz",
-    "line": "U3",
-    "type": "U-Bahn",
-    "destination": "Hauptbahnhof",
-    "time": 1716545400,
-    "delay": 0,
-    "realtime": true,
-    "platform": null
+    "duration": 22,
+    "transfers": 1,
+    "legs": [
+      {
+        "line": "U5",
+        "type": "UBAHN",
+        "origin": "Hauptbahnhof",
+        "departure": "14:09",
+        "departure_rt": null,
+        "transfer_at": "Innsbrucker Ring",
+        "arrival": "14:19",
+        "direction": "Neuperlach Süd",
+        "platform": "2"
+      },
+      {
+        "line": "U2",
+        "type": "UBAHN",
+        "origin": "Innsbrucker Ring",
+        "departure": "14:24",
+        "departure_rt": null,
+        "transfer_at": "Sendlinger Tor",
+        "arrival": "14:31",
+        "direction": "Messestadt Ost",
+        "platform": null
+      }
+    ]
   }
 ]
 ```
@@ -132,18 +153,28 @@ Direct connections from A to B (no transfers).
 **`--output llm`:**
 ````
 ```toon
-origin: Marienplatz
-destination: Hauptbahnhof
-time: 09:45
-connections:
-  - line: U3
-    type: U-Bahn
-    destination: Hauptbahnhof
-    board_at: Marienplatz
-    in_minutes: 2
-    departs_at: "09:47"
-    delay_seconds: 0
-    realtime: true
+origin: Hauptbahnhof
+destination: Sendlinger Tor
+time: 14:05
+journeys:
+  - duration: 22
+    transfers: 1
+    legs:
+      - line: U5
+        type: UBAHN
+        origin: Hauptbahnhof
+        departure: "14:09"
+        transfer_at: Innsbrucker Ring
+        arrival: "14:19"
+        direction: Neuperlach Süd
+        platform: "2"
+      - line: U2
+        type: UBAHN
+        origin: Innsbrucker Ring
+        departure: "14:24"
+        transfer_at: Sendlinger Tor
+        arrival: "14:31"
+        direction: Messestadt Ost
 ```
 ````
 
@@ -160,7 +191,6 @@ Live service disruptions and alerts (loaded via Playwright).
 | `--transport` | TEXT | Transport type filter |
 | `--lines` | TEXT | Line filter |
 | `--debug` | Flag | Print all intercepted API URLs |
-| `--output` / `-o` | `text`, `json`, `llm` | Output format (default: `text`) |
 
 **`--output json`:**
 ```json
@@ -212,5 +242,28 @@ disruptions:
 
 - **`disruptions` hangs or fails:** Chromium is installed automatically on first run. If problems persist: `python -m playwright install chromium`.
 - **Station not found:** Use the global ID, e.g. `--station de:09162:2`.
-- **`route` finds no connection:** Only direct services are supported. For connections with transfers visit <https://www.mvg.de/verbindungen.html>.
+- **`route` finds no connection:** Try the station's global ID (e.g. `--from de:09162:2`). Walking-only routes are filtered out automatically.
 - **Unknown transport type in output:** Pass `--output json` to see the raw `type` field returned by the MVG API.
+
+## TOON output format
+
+`--output llm` produces **TOON** (Text Object Output Notation) — a compact, YAML-like format optimised for AI agents. Compared to JSON, TOON significantly reduces token consumption while remaining easy for language models to parse.
+
+Each command wraps its output in a fenced code block:
+
+````
+```toon
+...
+````
+
+Errors are emitted as TOON on stderr:
+
+````
+```toon
+error:
+  code: NOT_FOUND
+  message: Station "Nirgendwo" not found.
+```
+````
+
+**Specification:** <https://toonformat.dev>

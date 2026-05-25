@@ -6,7 +6,7 @@ from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 
-from .models import Connection, Departure, Disruption, Station
+from .models import Connection, Departure, Disruption, Journey, Station
 
 console = Console()
 err_console = Console(stderr=True)
@@ -228,6 +228,69 @@ def render_connections(
             f"  │   🚏 Board at: {c.origin_name}  │  Alight at: {destination}\n"
             f"  └{'─' * 55}"
         )
+
+    console.print()
+
+
+# ── journeys ──────────────────────────────────────────────────────────────────
+
+def render_journeys(
+    origin: str,
+    destination: str,
+    journeys: list[Journey],
+    fmt: OutputFormat,
+) -> None:
+    if fmt == OutputFormat.json:
+        print(json.dumps([j.model_dump() for j in journeys], ensure_ascii=False, indent=2))
+        return
+
+    if fmt == OutputFormat.llm:
+        rows = []
+        for j in journeys:
+            legs_str = "".join(
+                f"      - line: {leg.line}\n        type: {leg.type}\n"
+                f"        origin: {leg.origin}\n"
+                f"        departure: {leg.departure_rt or leg.departure}\n"
+                f"        transfer_at: {leg.transfer_at}\n"
+                f"        arrival: {leg.arrival}\n"
+                f"        direction: {leg.direction}\n"
+                + (f"        platform: {leg.platform}\n" if leg.platform else "")
+                for leg in j.legs
+            )
+            rows.append(
+                f"  - duration: {j.duration}\n"
+                f"    transfers: {j.transfers}\n"
+                f"    legs:\n{legs_str}"
+            )
+        toon = (
+            f"origin: {origin}\ndestination: {destination}\n"
+            f"time: {datetime.now().strftime('%H:%M')}\n"
+            "journeys:\n" + ("".join(rows) if rows else "  []\n")
+        )
+        print(f"```toon\n{toon}```")
+        return
+
+    now_str = datetime.now().strftime("%H:%M")
+    console.print(f"\n{'═' * 60}")
+    console.print(f"  🗺  {origin}  →  {destination}  –  {now_str}")
+    console.print(f"{'═' * 60}")
+
+    if not journeys:
+        console.print("\n  Keine Verbindungen gefunden.\n")
+        return
+
+    for i, j in enumerate(journeys, 1):
+        transfers_str = "ohne Umstieg" if j.transfers == 0 else f"{j.transfers} Umstieg{'e' if j.transfers > 1 else ''}"
+        console.print(f"\n  ┌─ [{i}]  {j.duration} min  |  {transfers_str}")
+        for leg in j.legs:
+            icon = TRANSPORT_LABELS_BY_TYPE.get(leg.type, "").split()[0] if leg.type in TRANSPORT_LABELS_BY_TYPE else ""
+            dep = f"{leg.departure_rt}*" if leg.departure_rt else leg.departure
+            plat_str = f"  Gleis {leg.platform}" if leg.platform else ""
+            console.print(
+                f"  │   {icon}{leg.line:<5}  {dep} → {leg.arrival}  "
+                f"{leg.transfer_at:<28}  Ri: {leg.direction}{plat_str}"
+            )
+        console.print(f"  └{'─' * 55}")
 
     console.print()
 

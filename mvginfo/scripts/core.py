@@ -1,11 +1,13 @@
+import json
 import re
 import subprocess
 import sys
-from datetime import datetime
+import urllib.request
+from datetime import datetime, timedelta
 
 from mvg import MvgApi, MvgApiError, TransportType
 
-from .models import Connection, Departure, Disruption, Line, Station
+from .models import Connection, Departure, Disruption, Journey, JourneyLeg, Line, Station
 
 
 class ClientError(Exception):
@@ -44,8 +46,8 @@ def _raw_to_departure(raw: dict) -> Departure:
         line=raw.get("line") or "?",
         type=raw.get("type") or "?",
         destination=raw.get("destination") or "?",
-        time=raw.get("time") or 0,
-        delay=raw.get("delay") or 0,
+        time=raw["time"] if "time" in raw else 0,
+        delay=raw["delay"] if "delay" in raw else 0,
         realtime=raw.get("realtime") or False,
         cancelled=raw.get("cancelled") or False,
         platform=str(platform) if platform is not None else None,
@@ -126,7 +128,7 @@ def _dest_matches(dep_dest: str, target: Station) -> bool:
         return re.sub(r"\s*\(.*?\)", "", s).strip().lower()
 
     a, b = core(dep_dest), core(target.name)
-    return a == b or b in a or a in b or target.place.lower() in a
+    return a == b or a.startswith(b) or b.startswith(a)
 
 
 def find_connections(
@@ -172,14 +174,94 @@ def find_connections(
             line=dep.get("line") or "?",
             type=dep.get("type") or "?",
             destination=dep.get("destination") or "?",
-            time=dep.get("time") or 0,
-            delay=dep.get("delay") or 0,
+            time=dep["time"] if "time" in dep else 0,
+            delay=dep["delay"] if "delay" in dep else 0,
             realtime=dep.get("realtime") or False,
             platform=str(platform) if platform is not None else None,
         ))
         if len(result) >= limit:
             break
     return result
+
+
+_MVG_ROUTES_URL = "https://www.mvg.de/api/bgw-pt/v3/routes"
+
+
+def _iso_to_hhmm(iso: str | None) -> str:
+    return iso[11:16] if iso and len(iso) >= 16 else ""
+
+
+def find_journeys(
+    origin_id: str,
+    dest_id: str,
+    limit: int = 6,
+    transport_types: list[str] | None = None,
+) -> list[Journey]:
+    params = f"originStationGlobalId={origin_id}&destinationStationGlobalId={dest_id}"
+    if transport_types:
+        params += "&transportTypes=" + ",".join(transport_types)
+    req = urllib.request.Request(
+        f"{_MVG_ROUTES_URL}?{params}",
+        headers={"Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:
+        raise ClientError(str(exc)) from exc
+
+    journeys: list[Journey] = []
+    for route in data:
+        parts = route.get("parts", [])
+        if not parts:
+            continue
+        legs: list[JourneyLeg] = []
+        for part in parts:
+            line = part.get("line", {})
+            if line.get("transportType") == "PEDESTRIAN":
+                continue
+            frm = part.get("from", {})
+            to = part.get("to", {})
+            platform = frm.get("platform")
+            delay = frm.get("departureDelayInMinutes")
+            departure_rt: str | None = None
+            if delay:
+                try:
+                    rt = datetime.fromisoformat(frm["plannedDeparture"]) + timedelta(minutes=delay)
+                    departure_rt = rt.strftime("%H:%M")
+                except Exception:
+                    pass
+            legs.append(JourneyLeg(
+                line=str(line.get("label", "?")),
+                type=str(line.get("transportType", "?")),
+                origin=frm.get("name", "?"),
+                departure=_iso_to_hhmm(frm.get("plannedDeparture")),
+                departure_rt=departure_rt,
+                transfer_at=to.get("name", "?"),
+                arrival=_iso_to_hhmm(to.get("plannedDeparture")),
+                direction=line.get("destination", "?"),
+                platform=str(platform) if platform is not None else None,
+            ))
+        if not legs:
+            continue
+        dep_iso = parts[0]["from"].get("plannedDeparture", "")
+        arr_iso = parts[-1]["to"].get("plannedDeparture", "")
+        duration_min = 0
+        if dep_iso and arr_iso:
+            try:
+                d1 = datetime.fromisoformat(dep_iso)
+                d2 = datetime.fromisoformat(arr_iso)
+                duration_min = int((d2 - d1).total_seconds() // 60)
+            except Exception:
+                pass
+        journeys.append(Journey(
+            duration=duration_min,
+            transfers=max(0, len(legs) - 1),
+            legs=legs,
+        ))
+        if len(journeys) >= limit:
+            break
+    return journeys
 
 
 def parse_transport_types(value: str) -> list[str]:

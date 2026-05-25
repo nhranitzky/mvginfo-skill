@@ -9,10 +9,9 @@ from .core import (
     ClientError,
     ensure_chromium,
     fetch_disruptions,
-    find_connections,
+    find_journeys,
     find_nearby,
     find_station,
-    get_all_matching_stations,
     get_departures,
     get_lines,
     parse_line_filter,
@@ -21,10 +20,10 @@ from .core import (
 from .output import (
     OutputFormat,
     SEVERITY_ORDER,
-    render_connections,
     render_departures,
     render_disruptions,
     render_error,
+    render_journeys,
     render_stations,
 )
 
@@ -124,14 +123,14 @@ def route_cmd(
     lines: Annotated[Optional[str], typer.Option("--lines", metavar="LINE[,LINE]", help="Linien-Filter")] = None,
     output: _OPT = OutputFormat.text,
 ) -> None:
-    """MVG Routenplaner – Direktverbindungen via Abfahrtsfilterung."""
+    """MVG Routenplaner – Verbindungssuche mit Umstiegen via MVG-Routenplaner-API."""
     try:
         if output == OutputFormat.text:
             sys.stderr.write("  🔍 Stationen werden gesucht …\r")
             sys.stderr.flush()
-        origin_stations = get_all_matching_stations(origin)
-        if not origin_stations:
-            _err(f'Keine Station gefunden für "{origin}".', "NOT_FOUND", output)
+        origin_station = find_station(origin)
+        if origin_station is None:
+            _err(f'Startstation "{origin}" nicht gefunden.', "NOT_FOUND", output)
             return
 
         dest = find_station(destination)
@@ -140,18 +139,21 @@ def route_cmd(
             return
 
         tt = parse_transport_types(transport) if transport else None
-        lf = parse_line_filter(lines) if lines else None
 
         if output == OutputFormat.text:
-            sys.stderr.write("  📡 Live-Abfahrten werden geladen …\r")
+            sys.stderr.write("  📡 Verbindungen werden geladen …\r")
             sys.stderr.flush()
-        connections = find_connections(origin_stations, dest, limit=limit, transport_types=tt, line_filter=lf)
+        journeys = find_journeys(origin_station.id, dest.id, limit=limit, transport_types=tt)
+
+        if lines:
+            wanted = parse_line_filter(lines)
+            journeys = [j for j in journeys if any(leg.line.upper() in wanted for leg in j.legs)]
 
     except ClientError as exc:
         _err(str(exc), "error", output)
         return
 
-    render_connections(origin, destination, connections, output)
+    render_journeys(origin, destination, journeys, output)
 
 
 # ── disruptions ────────────────────────────────────────────────────────────────
