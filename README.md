@@ -23,6 +23,12 @@ hermes skills install nhranitzky/mvginfo-skill/mvginfo
 git clone https://github.com/nhranitzky/mvginfo-skill.git
 cp -R mvginfo-skill/mvginfo /path/to/skills
 ```
+or
+
+```bash
+npx degit nhranitzky/mvginfo-skill/mvginfo /path/to/skills/mvginfo
+```
+
 
 ## Requirements
 

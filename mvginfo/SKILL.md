@@ -53,7 +53,7 @@ ${HERMES_SKILL_DIR}/scripts/mvgcli stations --json "Marienplatz"
 ${HERMES_SKILL_DIR}/scripts/mvgcli stations --json --lat 48.137 --lng 11.575
 
 # With line details
-${HERMES_SKILL_DIR}/scripts/mvgcli stations --json --lines "Marienplatz"
+${HERMES_SKILL_DIR}/scripts/mvgcli stations --json --with-lines "Marienplatz"
 ```
 
 **Output:**

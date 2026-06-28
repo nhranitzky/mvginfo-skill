@@ -188,19 +188,18 @@ def get_disruptions(
     except Exception as exc:
         raise ClientError(str(exc)) from exc
 
+    wanted_tt = {t.upper() for t in transport_types} if transport_types else None
+
     disruptions: list[Disruption] = []
     for msg in result:
         msg_lines = [ln.label for ln in msg.lines]
-        msg_tts = list({ln.transportType.upper() for ln in msg.lines if ln.transportType})
+        msg_tts: set[str] = {ln.transportType.upper() for ln in msg.lines if ln.transportType}
 
-        if transport_types:
-            wanted = {t.upper() for t in transport_types}
-            if not set(msg_tts) & wanted:
-                continue
+        if wanted_tt and not msg_tts & wanted_tt:
+            continue
 
-        if line_filter:
-            if not {ln.upper() for ln in msg_lines} & line_filter:
-                continue
+        if line_filter and not {ln.upper() for ln in msg_lines} & line_filter:
+            continue
 
         disruptions.append(
             Disruption(
@@ -208,7 +207,7 @@ def get_disruptions(
                 title=msg.title,
                 description=re.sub(r"<[^>]+>", " ", msg.description).strip(),
                 lines=msg_lines,
-                transport_types=msg_tts,
+                transport_types=sorted(msg_tts),
                 valid_from=_fmt_ts(msg.validFrom),
                 valid_to=_fmt_ts(msg.validTo),
             )

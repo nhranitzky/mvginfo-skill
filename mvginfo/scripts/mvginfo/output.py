@@ -41,12 +41,24 @@ def _fmt_hhmm(ms: int) -> str:
         return "–"
 
 
+def _dump_json(data: object) -> None:
+    print(_json.dumps(data, ensure_ascii=False, indent=2))
+
+
+def _print_header(line1: str, line2: str = "") -> None:
+    console.print(f"\n{'═' * 60}")
+    console.print(f"  {line1}")
+    if line2:
+        console.print(f"  {line2}")
+    console.print(f"{'═' * 60}")
+
+
 # ── stations ──────────────────────────────────────────────────────────────────
 
 
 def render_stations(stations: list[Station], fmt: OutputFormat) -> None:
     if fmt == OutputFormat.json:
-        print(_json.dumps([s.model_dump() for s in stations], ensure_ascii=False, indent=2))
+        _dump_json([s.model_dump() for s in stations])
         return
 
     table = Table(show_header=True, header_style="bold")
@@ -66,15 +78,12 @@ def render_stations(stations: list[Station], fmt: OutputFormat) -> None:
 
 def render_departures(station: Station, departures: list[Departure], offset: int, fmt: OutputFormat) -> None:
     if fmt == OutputFormat.json:
-        print(_json.dumps([d.model_dump() for d in departures], ensure_ascii=False, indent=2))
+        _dump_json([d.model_dump() for d in departures])
         return
 
     now_str = datetime.now().strftime("%H:%M")
-    console.print(f"\n{'═' * 60}")
-    console.print(f"  🚏 {station.name}, {station.place}  –  {now_str}")
-    if offset:
-        console.print(f"  (showing departures in ≥{offset} min, walking offset)")
-    console.print(f"{'═' * 60}")
+    offset_hint = f"(showing departures in ≥{offset} min, walking offset)" if offset else ""
+    _print_header(f"🚏 {station.name}, {station.place}  –  {now_str}", offset_hint)
 
     if not departures:
         console.print("\n  No departures for the selected filters.\n")
@@ -98,13 +107,11 @@ def render_departures(station: Station, departures: list[Departure], offset: int
 
 def render_connections(origin: str, destination: str, connections: list[Connection], fmt: OutputFormat) -> None:
     if fmt == OutputFormat.json:
-        print(_json.dumps([c.model_dump() for c in connections], ensure_ascii=False, indent=2))
+        _dump_json([c.model_dump() for c in connections])
         return
 
     now_str = datetime.now().strftime("%H:%M")
-    console.print(f"\n{'═' * 60}")
-    console.print(f"  🗺  {origin}  →  {destination}  –  {now_str}")
-    console.print(f"{'═' * 60}")
+    _print_header(f"🗺  {origin}  →  {destination}  –  {now_str}")
 
     if not connections:
         console.print("\n  No connections found.\n")
@@ -132,13 +139,11 @@ def render_connections(origin: str, destination: str, connections: list[Connecti
 
 def render_disruptions(disruptions: list[Disruption], fmt: OutputFormat) -> None:
     if fmt == OutputFormat.json:
-        print(_json.dumps([d.model_dump() for d in disruptions], ensure_ascii=False, indent=2))
+        _dump_json([d.model_dump() for d in disruptions])
         return
 
     now_str = datetime.now().strftime("%d.%m.%Y %H:%M")
-    console.print(f"\n{'═' * 60}")
-    console.print(f"  ⚠️  MVG Service Alerts  –  {now_str}")
-    console.print(f"{'═' * 60}")
+    _print_header(f"⚠️  MVG Service Alerts  –  {now_str}")
 
     if not disruptions:
         console.print("\n  ✅ No current disruptions.\n")

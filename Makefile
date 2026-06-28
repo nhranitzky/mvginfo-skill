@@ -1,6 +1,8 @@
+REPO=nhranitzky/mvginfo-cli
+CLI=mvginfo/scripts/mvginfo
 
 dl-cli:
-	npx degit nhranitzky/mvginfo-cli/mvginfo mvginfo/scripts/mvginfo
+	rm -rf $(CLI) && npx degit $(REPO)/mvginfo $(CLI)
 
 commit:
 	git add -A

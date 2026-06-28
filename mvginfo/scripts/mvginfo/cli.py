@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated, NoReturn, Optional
 
 import typer
 
@@ -15,6 +15,7 @@ from .core import (
     parse_line_filter,
     parse_transport_types,
 )
+from .models import Station
 from .output import (
     OutputFormat,
     render_connections,
@@ -27,9 +28,25 @@ from .output import (
 app = typer.Typer(no_args_is_help=True)
 
 
-def _err(message: str, code: str, json_out: bool, exit_code: int = 1, suggestion: str = "") -> None:
+def _err(message: str, code: str, json_out: bool, exit_code: int = 1, suggestion: str = "") -> NoReturn:
     render_error(message, code, OutputFormat.json if json_out else OutputFormat.text, suggestion)
     raise typer.Exit(exit_code)
+
+
+def _parse_transport(transport: str | None, json_out: bool) -> list[str] | None:
+    if transport is None:
+        return None
+    try:
+        return parse_transport_types(transport)
+    except ValueError as exc:
+        _err(str(exc), "INVALID_ARG", json_out, exit_code=2)
+
+
+def _resolve(name: str, json_out: bool, label: str = "Station", suggestion: str = "") -> Station:
+    station = find_station(name)
+    if station is None:
+        _err(f'{label} "{name}" not found.', "NOT_FOUND", json_out, suggestion=suggestion)
+    return station  # type: ignore[return-value]
 
 
 # ── stations ──────────────────────────────────────────────────────────────────
@@ -40,7 +57,7 @@ def stations_cmd(
     query: Annotated[Optional[str], typer.Argument(help="Station name or global ID")] = None,
     lat: Annotated[Optional[float], typer.Option("--lat", metavar="LAT", help="Latitude (GPS search)")] = None,
     lng: Annotated[Optional[float], typer.Option("--lng", metavar="LNG", help="Longitude (GPS search)")] = None,
-    with_lines: Annotated[bool, typer.Option("--lines", help="Fetch line details (extra API call)")] = False,
+    with_lines: Annotated[bool, typer.Option("--with-lines", help="Fetch line details (extra API call)")] = False,
     limit: Annotated[int, typer.Option("--limit", help="Max number of stations for GPS search")] = 10,
     json_out: Annotated[bool, typer.Option("--json", help="Output as JSON.")] = False,
 ) -> None:
@@ -60,21 +77,11 @@ def stations_cmd(
 
     try:
         if query is not None:
-            station = find_station(query)
-            if station is None:
-                _err(
-                    f'Station "{query}" not found.',
-                    "NOT_FOUND",
-                    json_out,
-                    suggestion="mvginfo stations <partial name> to search",
-                )
-                return
-            stations = [station]
+            stations = [_resolve(query, json_out, suggestion="mvginfo stations <partial name> to search")]
         else:
             stations = find_nearby(lat, lng)  # type: ignore[arg-type]
             if not stations:
                 _err("No stations found near the given coordinates.", "NOT_FOUND", json_out)
-                return
             stations = stations[:limit]
 
         if with_lines:
@@ -83,7 +90,6 @@ def stations_cmd(
 
     except ClientError as exc:
         _err(str(exc), "API_ERROR", json_out)
-        return
 
     render_stations(stations, OutputFormat.json if json_out else OutputFormat.text)
 
@@ -106,26 +112,13 @@ def departures_cmd(
     json_out: Annotated[bool, typer.Option("--json", help="Output as JSON.")] = False,
 ) -> None:
     """Real-time departure board for a station."""
-    try:
-        tt = parse_transport_types(transport) if transport else None
-    except ValueError as exc:
-        _err(str(exc), "INVALID_ARG", json_out, exit_code=2)
-        return
+    tt = _parse_transport(transport, json_out)
 
     try:
-        resolved = find_station(station)
-        if resolved is None:
-            _err(
-                f'Station "{station}" not found.',
-                "NOT_FOUND",
-                json_out,
-                suggestion="mvginfo stations <name> to search",
-            )
-            return
+        resolved = _resolve(station, json_out, suggestion="mvginfo stations <name> to search")
         deps = get_departures(resolved.id, limit=limit, offset=offset, transport_types=tt)
     except ClientError as exc:
         _err(str(exc), "API_ERROR", json_out)
-        return
 
     if lines:
         wanted = parse_line_filter(lines)
@@ -148,25 +141,14 @@ def connections_cmd(
     json_out: Annotated[bool, typer.Option("--json", help="Output as JSON.")] = False,
 ) -> None:
     """Find connections with transfers between two stations."""
-    try:
-        tt = parse_transport_types(transport) if transport else None
-    except ValueError as exc:
-        _err(str(exc), "INVALID_ARG", json_out, exit_code=2)
-        return
+    tt = _parse_transport(transport, json_out)
 
     try:
-        origin_station = find_station(origin)
-        if origin_station is None:
-            _err(f'Origin station "{origin}" not found.', "NOT_FOUND", json_out)
-            return
-        dest_station = find_station(destination)
-        if dest_station is None:
-            _err(f'Destination station "{destination}" not found.', "NOT_FOUND", json_out)
-            return
+        origin_station = _resolve(origin, json_out, label="Origin station")
+        dest_station = _resolve(destination, json_out, label="Destination station")
         conns = get_connections(origin_station.id, dest_station.id, limit=limit, transport_types=tt)
     except ClientError as exc:
         _err(str(exc), "API_ERROR", json_out)
-        return
 
     render_connections(origin, destination, conns, OutputFormat.json if json_out else OutputFormat.text)
 
@@ -183,19 +165,13 @@ def disruptions_cmd(
     json_out: Annotated[bool, typer.Option("--json", help="Output as JSON.")] = False,
 ) -> None:
     """Show current MVG service alerts and disruptions."""
-    try:
-        tt = parse_transport_types(transport) if transport else None
-    except ValueError as exc:
-        _err(str(exc), "INVALID_ARG", json_out, exit_code=2)
-        return
-
+    tt = _parse_transport(transport, json_out)
     line_filter = parse_line_filter(lines) if lines else None
 
     try:
         disruptions = get_disruptions(transport_types=tt, line_filter=line_filter)
     except ClientError as exc:
         _err(str(exc), "API_ERROR", json_out)
-        return
 
     disruptions.sort(key=lambda d: 0 if d.type == "INCIDENT" else 1)
     render_disruptions(disruptions, OutputFormat.json if json_out else OutputFormat.text)
