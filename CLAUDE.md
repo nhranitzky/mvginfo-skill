@@ -1,3 +1,3 @@
 ## Skill
 
-- Do not touch the scripts under `mvginfo/scripts`.
+- Do not touch the scripts under `mvginfo/scripts/mvginfo`.

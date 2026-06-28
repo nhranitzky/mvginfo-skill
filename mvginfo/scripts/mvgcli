@@ -1,0 +1,6 @@
+#!/bin/sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+unset VIRTUAL_ENV
+ 
+exec uv run --no-project "$SCRIPT_DIR/mvginfo/run.py" "$@"
+ 

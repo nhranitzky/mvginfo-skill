@@ -1,13 +1,13 @@
 # mvginfo for Hermes
 
-Real-time Munich public transport data — departure boards, direct connections, disruption alerts and station search via the MVG CLI.
+Real-time Munich public transport data — departure boards, connections, disruption alerts and station search via the MVG CLI.
 
 ## Features
 
-- **find-stations** — search stations by name or GPS coordinates
+- **stations** — search stations by name or GPS coordinates
 - **departures** — live departure board with delay and platform info
-- **route** — next direct connections from A to B
-- **disruptions** — live service alerts loaded via Playwright
+- **connections** — next connections from A to B, including transfers
+- **disruptions** — live service alerts from the MVG network
 
 ## Installation
 
@@ -16,27 +16,41 @@ Real-time Munich public transport data — departure boards, direct connections,
 ```bash
 hermes skills install nhranitzky/mvginfo-skill/mvginfo
 ```
- 
+
 ### Custom directory (skills.external_dirs)
 
 ```bash
 git clone https://github.com/nhranitzky/mvginfo-skill.git
-cp -R  mvginfo-skill/mvginfo /path/to/skills
- 
+cp -R mvginfo-skill/mvginfo /path/to/skills
 ```
 
 ## Requirements
 
- 
-- Chromium for the `disruptions` command — installed automatically on first run via `python -m playwright install chromium`
+- [`uv`](https://github.com/astral-sh/uv) must be in `PATH` — install via `brew install uv` (macOS) or `pip install uv`
 
 ## Configuration
 
 No API key required. The MVG API is publicly accessible.
 
-## CLI Usage Examples
+## Developer Guide
 
-See [mvginfo/scripts/README.md](mvginfo/scripts/README.md) for the full CLI reference.
+The CLI source is a separate project: https://github.com/nhranitzky/mvginfo-cli
+
+### Makefile targets
+
+| Target | Description |
+|--------|-------------|
+| `make dl-cli` | Download the latest CLI scripts from `nhranitzky/mvginfo-cli` into `mvginfo/scripts/mvginfo/` |
+| `make commit MSG="…"` | Stage all changes and commit with the given message |
+| `make push` | Push the current branch to the remote |
+
+**Typical workflow after a CLI update:**
+
+```bash
+make dl-cli
+make commit MSG="chore: update mvginfo CLI"
+make push
+```
 
 ## License
 
